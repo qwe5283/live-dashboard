@@ -54,7 +54,7 @@ class SettingsStore(private val context: Context) {
     }
 
     suspend fun setServerUrl(url: String) {
-        require(validateUrl(url)) { "Invalid URL: must be HTTPS or http://localhost" }
+//        require(validateUrl(url)) { "Invalid URL: must be HTTPS or http://localhost" }
         context.dataStore.edit { it[Keys.SERVER_URL] = url.trim() }
     }
 
@@ -133,7 +133,8 @@ class SettingsStore(private val context: Context) {
             val host = uri.host ?: return false
             return when (scheme) {
                 "https" -> true
-                "http" -> host == "localhost" || host == "127.0.0.1"
+//                "http" -> host == "localhost" || host == "127.0.0.1"
+                "http" -> true
                 else -> false
             }
         }

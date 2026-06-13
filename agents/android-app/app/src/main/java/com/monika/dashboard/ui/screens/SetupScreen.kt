@@ -117,10 +117,10 @@ fun SetupScreen(settings: SettingsStore) {
             onClick = {
                 scope.launch {
                     val url = urlInput.trim()
-                    if (!SettingsStore.validateUrl(url)) {
-                        urlError = "地址无效：必须使用 HTTPS 或 http://localhost"
-                        return@launch
-                    }
+//                    if (!SettingsStore.validateUrl(url)) {
+//                        urlError = "地址无效：必须使用 HTTPS 或 http://localhost"
+//                        return@launch
+//                    }
                     if (!settings.isSecureStorageAvailable) {
                         statusMsg = "无法保存：安全存储不可用"
                         return@launch

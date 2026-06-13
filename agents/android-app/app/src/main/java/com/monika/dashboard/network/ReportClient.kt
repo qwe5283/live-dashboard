@@ -22,10 +22,10 @@ class ReportClient(
         val uri = URI(serverUrl)
         val scheme = uri.scheme ?: ""
         val host = uri.host ?: ""
-        require(
-            scheme == "https" ||
-            (scheme == "http" && (host == "localhost" || host == "127.0.0.1"))
-        ) { "Only HTTPS or http://localhost allowed" }
+//        require(
+//            scheme == "https" ||
+//            (scheme == "http" && (host == "localhost" || host == "127.0.0.1"))
+//        ) { "Only HTTPS or http://localhost allowed" }
     }
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)

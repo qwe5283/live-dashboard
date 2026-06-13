@@ -37,6 +37,7 @@
         android:label="Live Dashboard"
         android:supportsRtl="true"
         android:theme="@style/Theme.LiveDashboard"
+        android:usesCleartextTraffic="true"
         tools:targetApi="34">
 
         <activity
