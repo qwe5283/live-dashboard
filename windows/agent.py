@@ -6,12 +6,10 @@ Monitors the foreground window and reports app usage to the dashboard backend.
 import ctypes
 import ctypes.wintypes
 from datetime import datetime, timezone
-import ipaddress
 import json
 import logging
 import logging.handlers
 import os
-import socket
 import subprocess
 import sys
 import threading
@@ -391,16 +389,6 @@ def validate_config(cfg: dict) -> str | None:
         return "服务器地址必须使用 http:// 或 https://"
     if not hostname:
         return "服务器地址无效"
-
-    if scheme == "http":
-        try:
-            addrinfos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-        except socket.gaierror:
-            return f"无法解析域名: {hostname}"
-        for info in addrinfos:
-            ip = ipaddress.ip_address(info[4][0])
-            if ip.is_global:
-                return "HTTP 仅允许内网地址, 公网请使用 HTTPS"
 
     return None
 
@@ -929,7 +917,7 @@ def main() -> None:
         # Apply log preference
         set_file_logging(cfg.get("enable_log", False))
         if cfg.get("enable_log"):
-            log.info("HTTP: %s", "HTTPS" if cfg["server_url"].startswith("https") else "HTTP (内网)")
+            log.info("HTTP: %s", "HTTPS" if cfg["server_url"].startswith("https") else "HTTP")
 
         reporter = Reporter(cfg["server_url"], cfg["token"])
 
