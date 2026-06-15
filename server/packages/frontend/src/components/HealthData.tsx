@@ -29,6 +29,9 @@ const TYPE_META: Record<string, { label: string; icon: string; priority: number 
 // Core metrics shown as cards at top
 const CORE_TYPES = ["heart_rate", "oxygen_saturation", "steps", "active_calories"];
 
+// Cumulative types: sum all records for daily total instead of showing latest
+const CUMULATIVE_TYPES = new Set(["steps", "distance", "active_calories", "total_calories", "hydration"]);
+
 interface Props {
   selectedDate: string;
   deviceId?: string;
@@ -88,6 +91,31 @@ export default function HealthData({ selectedDate, deviceId }: Props) {
       .sort((a, b) => a.time.getTime() - b.time.getTime());
   }, [grouped]);
 
+  // Steps cumulative timeline for chart
+  const stepsPoints = useMemo(() => {
+    const sData = grouped.get("steps");
+    if (!sData || sData.all.length < 2) return [];
+    const sorted = [...sData.all].sort(
+      (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
+    );
+    let cumulative = 0;
+    return sorted.map((r) => {
+      cumulative += r.value;
+      return { time: new Date(r.recorded_at), value: cumulative };
+    });
+  }, [grouped]);
+
+  // Get display value: sum for cumulative types, latest for others
+  const getDisplayValue = useCallback(
+    (entry: { latest: HealthRecord; all: HealthRecord[] }, type: string) => {
+      if (CUMULATIVE_TYPES.has(type)) {
+        return entry.all.reduce((acc, r) => acc + r.value, 0);
+      }
+      return entry.latest.value;
+    },
+    []
+  );
+
   if (loading && !data) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -144,7 +172,7 @@ export default function HealthData({ selectedDate, deviceId }: Props) {
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg font-mono font-semibold text-[var(--color-text)]">
-                    {formatValue(entry.latest.value, type)}
+                    {formatValue(getDisplayValue(entry, type), type)}
                   </span>
                   <span className="text-[10px] text-[var(--color-text-muted)]">
                     {entry.latest.unit}
@@ -160,7 +188,15 @@ export default function HealthData({ selectedDate, deviceId }: Props) {
       {heartRatePoints.length >= 2 && (
         <div className="border border-dashed border-[var(--color-border)] rounded-md p-3">
           <p className="text-[10px] text-[var(--color-text-muted)] mb-2">今日心率趋势</p>
-          <HeartRateChart points={heartRatePoints} />
+          <TrendChart points={heartRatePoints} unit="bpm" />
+        </div>
+      )}
+
+      {/* Steps cumulative chart */}
+      {stepsPoints.length >= 2 && (
+        <div className="border border-dashed border-[var(--color-border)] rounded-md p-3">
+          <p className="text-[10px] text-[var(--color-text-muted)] mb-2">今日步数累计</p>
+          <TrendChart points={stepsPoints} unit="步" valueFormatter={(v) => Math.round(v).toLocaleString()} />
         </div>
       )}
 
@@ -181,7 +217,7 @@ export default function HealthData({ selectedDate, deviceId }: Props) {
                   </div>
                   <div className="flex items-baseline gap-1">
                     <span className="text-xs font-mono font-medium text-[var(--color-text)]">
-                      {formatValue(entry.latest.value, type)}
+                      {formatValue(getDisplayValue(entry, type), type)}
                     </span>
                     <span className="text-[10px] text-[var(--color-text-muted)]">
                       {entry.latest.unit}
@@ -210,8 +246,16 @@ function formatValue(value: number, type: string): string {
   return value.toFixed(1);
 }
 
-// Pure SVG heart rate chart — responsive full-width, with hover tooltip
-function HeartRateChart({ points }: { points: { time: Date; value: number }[] }) {
+// Pure SVG trend chart — responsive full-width, with hover tooltip
+function TrendChart({
+  points,
+  unit,
+  valueFormatter,
+}: {
+  points: { time: Date; value: number }[];
+  unit: string;
+  valueFormatter?: (v: number) => string;
+}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -288,8 +332,11 @@ function HeartRateChart({ points }: { points: { time: Date; value: number }[] })
   const hoveredCoord = hoverIdx !== null ? pointCoords[hoverIdx] : null;
 
   // Tooltip text
+  const formattedValue = hovered
+    ? (valueFormatter ? valueFormatter(hovered.value) : Math.round(hovered.value).toString())
+    : "";
   const tooltipText = hovered
-    ? `${hovered.time.getHours().toString().padStart(2, "0")}:${hovered.time.getMinutes().toString().padStart(2, "0")}  ${Math.round(hovered.value)} bpm`
+    ? `${hovered.time.getHours().toString().padStart(2, "0")}:${hovered.time.getMinutes().toString().padStart(2, "0")}  ${formattedValue} ${unit}`
     : "";
 
   // Keep tooltip inside SVG bounds
@@ -341,9 +388,9 @@ function HeartRateChart({ points }: { points: { time: Date; value: number }[] })
           />
           {/* Tooltip background */}
           <rect
-            x={tooltipX - 46}
+            x={tooltipX - 52}
             y={tooltipY - 14}
-            width="92"
+            width="104"
             height="16"
             rx="4"
             fill="var(--color-card)"
