@@ -17,6 +17,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlin.coroutines.cancellation.CancellationException
 
 data class BackgroundReadAvailability(
@@ -154,7 +155,7 @@ class HealthConnectManager(private val context: Context) {
         for (type in permittedTypes) {
             try {
                 val results = withTimeout(15_000L) {
-                    readByType(type, timeRange)
+                    readByType(type, timeRange, since, until)
                 }
                 if (results.isNotEmpty()) {
                     DebugLog.log("健康", "${type.displayName}: ${results.size} 条")
@@ -192,7 +193,9 @@ class HealthConnectManager(private val context: Context) {
 
     private suspend fun readByType(
         type: HealthDataType,
-        timeRange: TimeRangeFilter
+        timeRange: TimeRangeFilter,
+        since: Instant,
+        until: Instant
     ): List<ReportClient.HealthRecord> {
         return when (type) {
             HealthDataType.HEART_RATE -> readHeartRate(timeRange)
@@ -200,8 +203,8 @@ class HealthConnectManager(private val context: Context) {
             HealthDataType.HEART_RATE_VARIABILITY -> readHRV(timeRange)
             HealthDataType.STEPS -> readSteps(timeRange)
             HealthDataType.DISTANCE -> readDistance(timeRange)
-            HealthDataType.EXERCISE -> readExercise(timeRange)
-            HealthDataType.SLEEP -> readSleep(timeRange)
+            HealthDataType.EXERCISE -> readExercise(since, until)
+            HealthDataType.SLEEP -> readSleep(since, until)
             HealthDataType.OXYGEN_SATURATION -> readOxygenSaturation(timeRange)
             HealthDataType.BODY_TEMPERATURE -> readBodyTemperature(timeRange)
             HealthDataType.RESPIRATORY_RATE -> readRespiratoryRate(timeRange)
@@ -282,7 +285,12 @@ class HealthConnectManager(private val context: Context) {
         }
     }
 
-    private suspend fun readExercise(timeRange: TimeRangeFilter): List<ReportClient.HealthRecord> {
+    private suspend fun readExercise(
+        since: Instant,
+        until: Instant
+    ): List<ReportClient.HealthRecord> {
+        val exerciseSince = since.minus(12, ChronoUnit.HOURS)
+        val timeRange = TimeRangeFilter.between(exerciseSince, until)
         val response = client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class, timeRange))
         return response.records.map { record ->
             val durationMin = java.time.Duration.between(record.startTime, record.endTime).toMinutes().toDouble()
@@ -296,7 +304,12 @@ class HealthConnectManager(private val context: Context) {
         }
     }
 
-    private suspend fun readSleep(timeRange: TimeRangeFilter): List<ReportClient.HealthRecord> {
+    private suspend fun readSleep(
+        since: Instant,
+        until: Instant
+    ): List<ReportClient.HealthRecord> {
+        val sleepSince = since.minus(24, ChronoUnit.HOURS)
+        val timeRange = TimeRangeFilter.between(sleepSince, until)
         val response = client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, timeRange))
         return response.records.map { record ->
             val durationMin = java.time.Duration.between(record.startTime, record.endTime).toMinutes().toDouble()
