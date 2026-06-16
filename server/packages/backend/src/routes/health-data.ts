@@ -16,7 +16,10 @@ const VALID_TYPES = new Set([
 const insertHealthRecord = db.prepare(`
   INSERT INTO health_records (device_id, type, value, unit, recorded_at, end_time)
   VALUES (?, ?, ?, ?, ?, ?)
-  ON CONFLICT(device_id, type, recorded_at, end_time) DO NOTHING
+  ON CONFLICT(device_id, type, recorded_at, end_time) DO UPDATE SET
+    value = excluded.value,
+    unit = excluded.unit,
+    created_at = datetime('now')
 `);
 
 const insertMany = db.transaction((records: { deviceId: string; type: string; value: number; unit: string; recordedAt: string; endTime: string }[]) => {
